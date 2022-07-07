@@ -1,31 +1,40 @@
-import React, { Component, PropTypes } from 'react';
-import { connect } from 'react-redux';
-import { itemsFetchData } from '../../actions/items';
+import React, { useState } from 'react';
+import {ITEMS_SOURCE} from './constants';
 
+import ItemList from './template/ItemList';
+import ItemAttach from "./template/ItemAttach";
 
-class SideBar extends Component {
-	componentDidMount() {
-		this.props.fetchData('http://5af1eee530f9490014ead8c4.mockapi.io/items');
+const SideBar = () => {
+
+	const [items, setItems] = useState(null);
+
+	if(items === null){
+		fetch(ITEMS_SOURCE)
+			.then((response) => {
+				if (!response.ok) {
+					throw Error(response.statusText);
+				}
+				return response;})
+			.then((response) => response.json())
+			.then(items => 	{setItems(items)});
+
+		return 'loading...';
 	}
 
-	render() {
-		// console.log('SideBar', this.props);
-		return ( <div>{this.props.children}</div> );
+	if(typeof items !== 'object' || items.length === 0 ){
+		console.error('List empty!');
+		return;
 	}
+
+	return (
+		<div>
+			<ItemList items={items}/>
+			<hr/>
+			<ItemAttach items={items}/>
+		</div>
+	);
+
 }
 
-SideBar.propTypes = {
-	fetchData: PropTypes.func.isRequired,
-	items: PropTypes.array.isRequired
-};
 
-const mapDispatchToProps = (dispatch) => {
-	return { fetchData: (url) => dispatch(itemsFetchData(url)) };
-};
-
-const mapStateToProps = (state) => {
-	return {
-		items: state.items,
-	};
-};
-export default connect(mapStateToProps, mapDispatchToProps)(SideBar);
+export default SideBar;
