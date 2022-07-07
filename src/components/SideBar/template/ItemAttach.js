@@ -1,59 +1,60 @@
 import React, { Component, PropTypes } from 'react';
 import { connect, useSelector } from 'react-redux';
-import {itemsAttachSort} from "../../../actions/itemsAttach";
+
 
 class ItemAttach extends Component {
 
-	componentDidUpdate(){
-		/**
-		 * Этот костыль позволяет однократно создать вложенную структуру.
-		 * Нужно доработать так что бы при мзменении основного items, запучкалась пересборка itemsAttach
-		 */
-		if(this.props.items.length > 0 && this.props.itemsAttach.length === 0){
-			this.props.attachSort(this.props.items);
+	constructor(props) {
+		super(props);
+	}
+
+	itemsSort(items){
+		const attachWalker = (id) => {
+			// get children list by parent id
+			const groupByParent = items.filter(item => item.parent_id === id);
+			// process child items
+			const childList = groupByParent.map(({id, label, parent_id}) => ({id, label, parent_id, children: attachWalker(id)}));
+			// finalising
+			return (childList.length)
+				? childList.map(
+					({id, label, parent_id, children}) => children.length
+						? {id, label, parent_id, children}
+						: {id, label, parent_id})
+				: [];
 		}
+		return attachWalker(0)
+	}
+
+	itemsAttachView(items){
+		return <ul>
+			{items.map(item => {
+					let children = '';
+					if(typeof item.children === 'object' && item.children.length > 0){
+						children = this.itemsAttachView(item.children);
+					}
+					return <li key={item.id}>{item.label}{children}</li>;
+				}
+			)}
+		</ul>
 	}
 
 	render() {
+		const generatedItems = this.itemsSort(this.props.items);
+		const itemsAttach = this.itemsAttachView(generatedItems);
 
 		return (
 			<div>
 				<hr/>
-				{itemsAttachView(this.props.itemsAttach)}
+				{ itemsAttach }
 			</div>
 		);
 	}
 }
 
-function itemsAttachView(items){
-
-	return <ul>
-		{items.map(item => {
-				let children = '';
-				if(typeof item.children === 'object' && item.children.length > 0){
-					children = itemsAttachView(item.children);
-				}
-				return <li key={item.id}>{item.label}{children}</li>;
-			}
-		)}
-	</ul>
-}
-
 ItemAttach.propTypes = {
-	attachSort: PropTypes.func.isRequired,
-	itemsAttach: PropTypes.array.isRequired,
 	items: PropTypes.array.isRequired,
 };
 
-const mapDispatchToProps = (dispatch) => {
-	return { attachSort: (items) => dispatch(itemsAttachSort(items)) };
-};
+const mapStateToProps = (state) => ({items: state.items});
 
-const mapStateToProps = (state) => {
-	return {
-		items: state.items,
-		itemsAttach: state.itemsAttach
-	};
-};
-
-export default connect(mapStateToProps, mapDispatchToProps)(ItemAttach);
+export default connect(mapStateToProps)(ItemAttach);
